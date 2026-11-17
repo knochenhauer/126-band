@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>126th Army Band</title>
+<style>body{margin:0;font:16px system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:#f4f3ef;color:#222}#ld{padding:28px}</style>
+</head>
+<body>
+<p id="ld">Loading the 126th Army Band app…</p>
+<script>
+/* 126th Army Band app - website loader (Kase, 2026-11-17).
+   Gets each page from the band app's Apps Script (EXEC) and sends every app call there.
+   No Google sign-in is used, so browsers signed into several Google accounts work. */
+var EXEC = 'https://script.google.com/macros/s/AKfycbzADjPrNGjQw-kAFnk1t72R706HCSZ6j5zt-UcoXR0KJEKvKb8x_l7GE7JhxjMZCIzqKw/exec';
+
+function bandShim(EXEC) {
+  var params = {}, list = {};
+  new URLSearchParams(location.search).forEach(function (v, k) { params[k] = v; (list[k] = list[k] || []).push(v); });
+  function call(fn, args, ok, fail, user) {
+    fetch(EXEC, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ fn: fn, args: args }) })
+      .then(function (r) { return r.json(); })
+      .then(function (d) { if (d.ok) { if (ok) ok(d.r, user); } else if (fail) fail(new Error(d.e), user); })
+      .catch(function (e) { if (fail) fail(new Error('No connection. Check your internet and try again.'), user); });
+  }
+  function runner(ok, fail, user) {
+    return new Proxy({}, { get: function (_, k) {
+      if (k === 'withSuccessHandler') return function (f) { return runner(f, fail, user); };
+      if (k === 'withFailureHandler') return function (f) { return runner(ok, f, user); };
+      if (k === 'withUserObject') return function (o) { return runner(ok, fail, o); };
+      return function () { call(String(k), Array.prototype.slice.call(arguments).map(function (a) { return a === undefined ? null : a; }), ok, fail, user); };
+    } });
+  }
+  window.google = { script: {
+    run: runner(null, null, undefined),
+    url: { getLocation: function (cb) { cb({ hash: location.hash.replace(/^#/, ''), parameter: params, parameters: list }); } },
+    host: { close: function () { }, setHeight: function () { }, setWidth: function () { }, editor: {} }
+  } };
+}
+
+(function () {
+  var p = {}; new URLSearchParams(location.search).forEach(function (v, k) { p[k] = v; });
+  var view = p.view || ''; delete p.view;
+  fetch(EXEC, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ page: view, params: p }) })
+    .then(function (r) { return r.json(); })
+    .then(function (d) {
+      if (!d.ok) throw new Error(d.e);
+      var shim = '<script>(' + bandShim.toString() + ')(' + JSON.stringify(EXEC) + ');<\/script>';
+      var html = d.r;
+      html = /<head[^>]*>/i.test(html) ? html.replace(/<head[^>]*>/i, function (m) { return m + shim; }) : shim + html;
+      document.open(); document.write(html); document.close();
+    })
+    .catch(function (e) {
+      document.getElementById('ld').textContent = 'The band app could not load (' + (e && e.message || e) + '). Check your internet and refresh.';
+    });
+})();
+</script>
+</body>
+</html>
